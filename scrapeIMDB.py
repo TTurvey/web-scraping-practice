@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 from time import sleep
 from random import randint
 import re
-import csv
 
 #Declaring the headers 
 headers = {"Accept-Language": "en-US,en;q=0.5"}
@@ -63,7 +62,8 @@ try:
             else :
                 imdb_metascore_formatted = "**"
             imdb_metascores.append(imdb_metascore_formatted)
-            
+
+
             # get number of IMDb votes
             nv_object = html_obj.find_all('span', attrs = {'name': "nv"})
             imdb_votes_text = nv_object[0].text
@@ -74,7 +74,7 @@ try:
             film_name_text = html_obj.h3.a.text
             film_name_formatted = film_name_text.strip()
             film_names.append(film_name_formatted)
-            
+
             # get film year of release
             film_year_text = html_obj.h3.find('span', class_ = "lister-item-year text-muted unbold").text
             film_year_formatted = re.sub('[^0-9]','', film_year_text)
@@ -92,7 +92,7 @@ try:
             film_runtime_text = html_obj.p.find("span", class_ = 'runtime').text
             film_runtime_formatted = film_runtime_text.rstrip(' mins')
             film_runtimes.append(film_runtime_formatted)
-        
+
             # get film genre
             film_genre_text = html_obj.find('span', class_ = "genre").text
             film_genre_formatted = film_genre_text.strip()
@@ -101,11 +101,11 @@ try:
             # get film directors and stars
             cast_text = html_obj.find("p", class_ = '').text
             cast_list = cast_text.replace('\n', '').split('|')
-
+            # get directors
             film_directors_text = cast_list[0]
             film_directors_formatted = film_directors_text.replace('Director:', '').replace('Directors:', '').strip()
             film_directors.append(film_directors_formatted)
-
+            # get stars
             film_stars_text = cast_list[1]
             film_stars_formatted = film_stars_text.replace('Stars:', '').strip()
             film_stars.append(film_stars_formatted)
@@ -120,16 +120,16 @@ try:
             film_descriptions.append(film_description_formatted)
             
             # get film gross
-            if len(nv_object) > 1 :
-                film_gross_text = nv_object[1].text
-                film_gross_formatted = film_gross_text.strip()
-            else :
-                film_gross_formatted = '****'
+            span_objects = html_obj.find('p', class_ = 'sort-num_votes-visible').find_all('span')
+            l = len(span_objects)
+            film_gross_formatted = '****'
+            for i in range(l):
+                if span_objects[i].text == "Gross:" :
+                    film_gross_text = span_objects[i+1]["data-value"]
+                    film_gross_formatted = film_gross_text.strip()
             film_grosses.append(film_gross_formatted)
-
-
-            print(imdb_ranking_formatted, film_name_formatted)
             
+
 except Exception as e:
     print(e)
 
@@ -164,7 +164,9 @@ film_list = pd.DataFrame({ "IMDb Ranking": imdb_rankings,
                            "Directors": film_directors, 
                            "Stars": film_stars, 
                            "Description": film_descriptions, 
-                           "Gross": film_grosses })
+                           "Gross (USD)": film_grosses })
 
 
-film_list.to_csv('raw_data_top_1000_IMDb_movies.csv', index=False)
+# Save the dataframe to csv format with no indexing column.
+# Mode set to overwrite if existing filename already.
+film_list.to_csv('raw_data_top_1000_IMDb_movies.csv', index=False, mode='w')
